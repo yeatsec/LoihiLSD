@@ -1,9 +1,15 @@
 
 class SpikeMsg:
 
-    def __init__(self, core_id, axon_id, delay=None):
+    def __init__(self, core_id, axon_ids, delay=None):
+        """
+        Parameters:
+        core_id: destination core for this message
+        axon_ids: list of destination axon_id instances
+        delay: delay value for the message. may have additional delay added at destination
+        """
         self.core_id = core_id
-        self.axon_id = axon_id
+        self.axon_ids = axon_ids
         self.delay = delay
         self.op = 'nop'
 
@@ -53,6 +59,9 @@ class Queue:
         if self.is_empty():
             return 'nop' # since this doesn't match the keys in the arbiter, it won't try to use it
         return self.buffer[0].op
+
+    def ready(self):
+        return self.is_empty()
 
 
 class Router:
@@ -110,6 +119,15 @@ class Router:
         for key in self.keys:
             basestr += '{}: {}\n'.format(key, str(self.buffers[key]))
         return basestr
+
+    def ready(self):
+        r = True
+        for buff in self.buffers:
+            if r:
+                r = buff.ready() # if false, will break next iteration
+            else:
+                break
+        return r
         
 
 class Arbiter:
