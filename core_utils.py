@@ -34,7 +34,7 @@ class Core:
         self.core_id = core_id
         self.n_neurons = n_neurons
         self.in_buffer = Queue()
-        self.out_buffer = Queue(capacity=np.inf)
+        self.out_buffer = Queue(capacity=MAX_AXON_OUT) # worst case buffering
         self.cur_nrn = 0
         # variables
         self.axon_in = {} # map of axon_in to list of synapses, each synapse has a delay
@@ -86,6 +86,9 @@ class Core:
                 # create spike message(s)
                 for smsg_data in self.out_axon_state[self.cur_nrn]:
                     self.out_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
+
+    def ready(self):
+        return self.cur_nrn == self.n_neurons and self.in_buffer.ready() and self.out_buffer.ready()
 
 
 
