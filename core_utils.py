@@ -30,8 +30,9 @@ class SynapseState:
 
 class Core:
     """"""
-    def __init__(self, core_id):
+    def __init__(self, core_id, tstep_ref_func):
         self.core_id = core_id
+        self.cur_tstep = tstep_ref_func
         self.n_neurons = 0
         self.n_axon_out = 0
         self.n_synapse_in = 0
@@ -51,6 +52,7 @@ class Core:
         self.vmin = []
         self.vmax = []
         self.bias = []
+        self.bias_delay = []
 
         # discretization methods
         # self._decay_current = lambda x, u: decay_int(x, self.decay_u, offset=1) + u
@@ -98,7 +100,7 @@ class Core:
         self.axon_out[neuron_id].append(spike_msg_data)
         self.n_axon_out += 1
 
-    def add_neuron(self, decay_u, decay_v, vth, bias=0, vmin=0, vmax=np.inf):
+    def add_neuron(self, decay_u, decay_v, vth, bias=0, bias_delay=0, vmin=0, vmax=np.inf):
         self.n_neurons += 1
         assert self.n_neurons <= COMPARTMENTS_PER_CORE
         self.decay_u.append(decay_u)
@@ -107,6 +109,8 @@ class Core:
         self.vmin.append(vmin)
         self.vmax.append(vmax)
         self.bias.append(bias)
+        self.bias_delay.append(bias_delay)
+        return self.n_neurons - 1
 
     def prepare_computation(self):
         assert self.n_neurons <= COMPARTMENTS_PER_CORE
@@ -123,6 +127,7 @@ class Core:
         self.vmin = np.asarray(self.vmin, dtype=DTYPE)
         self.vmax = np.asarray(self.vmax, dtype=DTYPE)
         self.bias = np.asarray(self.bias, dtype=DTYPE)
+        self.bias_delay = np.asarray(self.bias_delay, dtype=np.int32)
 
     def process_noc(self):
         # fill in_buffer
@@ -152,7 +157,10 @@ class Core:
             # add input to current and decay
             self.current[self.cur_nrn] = self._decay_current(self.cur_nrn)
             # self._overflow(self.current[self.cur_nrn], U_BITS)
-            c_b = self.current[self.cur_nrn] + self.bias[self.cur_nrn]
+            c_b = self.current[self.cur_nrn]
+            # only add the bias if the delay is passed
+            if self.cur_tstep() >= self.bias_delay[self.cur_nrn]:
+                c_b += self.bias[self.cur_nrn]
             # self._overflow(self.current[self.cur_nrn], U_BITS)
             self.voltage[self.cur_nrn] = self._decay_voltage(self.cur_nrn, c_b)
             self.voltage[self.cur_nrn] = Core.clip(self.voltage[self.cur_nrn], self.vmin[self.cur_nrn], \
