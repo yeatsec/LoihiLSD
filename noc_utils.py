@@ -1,7 +1,8 @@
+from collections import OrderedDict
 
 class SpikeMsg:
 
-    def __init__(self, core_id, axon_ids, delay=None):
+    def __init__(self, core_id, axon_ids, delay=1):
         """
         Parameters:
         core_id: destination core for this message
@@ -22,7 +23,7 @@ class SpikeMsg:
         self.op = op
 
     def __repr__(self):
-        return 'SpikeMsg(core_id: {} axon_id: {} delay: {} op: {})'.format(self.core_id, self.axon_id, self.delay, self.op)
+        return 'SpikeMsg(core_id: {} axon_id: {} delay: {} op: {})'.format(self.core_id, self.axon_ids, self.delay, self.op)
 
 class Queue:
 
@@ -80,8 +81,8 @@ class Router:
         self.in_cap = in_cap
         self.arity = len(keys)
         self.keys = keys
-        self.buffers = {}
-        self.sink_refs = {}
+        self.buffers = OrderedDict()
+        self.sink_refs = OrderedDict()
         for key in keys:
             self.buffers[key] = Queue(capacity=in_cap, decode=self.decode)
             self.sink_refs[key] = None
@@ -122,9 +123,9 @@ class Router:
 
     def ready(self):
         r = True
-        for buff in self.buffers:
+        for buffkey in self.buffers.keys():
             if r:
-                r = buff.ready() # if false, will break next iteration
+                r = self.buffers[buffkey].ready() # if false, will break next iteration
             else:
                 break
         return r

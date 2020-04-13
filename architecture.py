@@ -81,5 +81,15 @@ class Chip:
         if advance_timestep:
             self.controller.inc_tstep()
             
+    def ready(self):
+        is_ready = True
+        for core in self.cores:
+            if is_ready:
+                is_ready = core.ready()
+        if is_ready:
+            for router in self.routers:
+                if is_ready:
+                    is_ready = router.ready()
+        return is_ready
 
     
