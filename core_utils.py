@@ -141,9 +141,9 @@ class Core:
     def process_msg(self):
         if not self.in_buffer.is_empty():
             msg = self.in_buffer.dequeue()
-            print('Process message! {}'.format(str(msg)))
+            # print('Process message! {}'.format(str(msg)))
             for ax_in in msg.axon_ids: # index into synapse state
-                print(self.axon_in)
+                # print(self.axon_in)
                 synapse_list = self.axon_in[ax_in]
                 for syn in synapse_list:
                     self.input[syn.get_delay() + msg.get_delay()][syn.get_neuron_id()] += syn.get_weight() # TODO - quantization

@@ -98,7 +98,7 @@ class Chip:
                     self.noc_next_op_step()
                     for router in self.routers:
                         router.operate()
-                        print(router)
+                        #print(router)
                 tic_toc = not tic_toc
                 self.core_cycle_count += 1
             self.controller.inc_tstep()

@@ -1,5 +1,5 @@
 from chip_utils import Chip 
 
-chip = Chip(x_dim=2, y_dim=2)
-chip.program_cores('mock.csv')
+chip = Chip(x_dim=4, y_dim=4)
+chip.program_cores('out4x4.csv')
 chip.run()
