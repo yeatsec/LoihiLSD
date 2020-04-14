@@ -49,13 +49,13 @@ class ChipProgrammer:
                 delay_pre = int(line[4])
                 delay_post = int(line[5])
                 # must set up axon out in pre_core
-                core_id = self.nrn_id_to_core_axon_map[src_nrn_id]['core_id']
-                ind = self.chip_ref.get_ind(core_id[0], core_id[1])
-                self.chip_ref.cores[ind].add_axon_out(self.nrn_id_to_core_axon_map[src_nrn_id]['nrn_core_loc'], (core_id, [src_nrn_id], delay_pre))
+                src_core_id = self.nrn_id_to_core_axon_map[src_nrn_id]['core_id']
+                dst_core_id = self.nrn_id_to_core_axon_map[dst_nrn_id]['core_id']
+                src_ind = self.chip_ref.get_ind(src_core_id[0], src_core_id[1])
+                self.chip_ref.cores[src_ind].add_axon_out(self.nrn_id_to_core_axon_map[src_nrn_id]['nrn_core_loc'], (dst_core_id, [src_nrn_id], delay_pre))
                 # must set up axon in in post_core
-                core_id = self.nrn_id_to_core_axon_map[dst_nrn_id]['core_id']
-                ind = self.chip_ref.get_ind(core_id[0], core_id[1])
-                self.chip_ref.cores[ind].add_synapse_in(src_nrn_id, SynapseState(
+                dst_ind = self.chip_ref.get_ind(dst_core_id[0], dst_core_id[1])
+                self.chip_ref.cores[dst_ind].add_synapse_in(src_nrn_id, SynapseState(
                     self.nrn_id_to_core_axon_map[dst_nrn_id]['nrn_core_loc'],
                     weight,
                     delay_post))

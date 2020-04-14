@@ -12,18 +12,28 @@ class SpikeMsg:
         self.core_id = core_id
         self.axon_ids = axon_ids
         self.delay = delay
+        self.traveled = False
         self.op = 'nop'
 
     def decrement_delay(self):
         self.delay -= 1
         assert self.delay != 0
 
+    def set_traveled(self, b):
+        self.traveled = b
+
+    def get_traveled(self):
+        return self.traveled
+
     def set_op(self, op):
         assert type(op) is type('I am a string')
         self.op = op
 
+    def get_delay(self):
+        return self.delay
+
     def __repr__(self):
-        return 'SpikeMsg(core_id: {} axon_id: {} delay: {} op: {})'.format(self.core_id, self.axon_ids, self.delay, self.op)
+        return 'SpikeMsg(core_id: {} axon_id: {} delay: {} op: {} tr: {})'.format(self.core_id, self.axon_ids, self.delay, self.op, self.traveled)
 
 class Queue:
 
@@ -35,12 +45,17 @@ class Queue:
     def enqueue(self, msg):
         assert not self.is_full() # should not be calling this if buffer at capacity
         # do decode step here
+        msg.set_traveled(True)
         self.decode(msg)
         self.buffer.append(msg)
 
     def dequeue(self):
         assert not self.is_empty()
         return self.buffer.pop(0)
+
+    def next_op_step(self):
+        for msg in self.buffer:
+            msg.set_traveled(False)
 
     def is_empty(self):
         return len(self.buffer) == 0
@@ -58,8 +73,8 @@ class Queue:
 
     def req(self):
         if self.is_empty():
-            return 'nop' # since this doesn't match the keys in the arbiter, it won't try to use it
-        return self.buffer[0].op
+            return 'nop', True # since this doesn't match the keys in the arbiter, it won't try to use it
+        return self.buffer[0].op, self.buffer[0].get_traveled()
 
     def ready(self):
         return self.is_empty()
@@ -100,6 +115,10 @@ class Router:
     def operate(self):
         assert type(self.xbar) is Crossbar
         self.xbar.operate()
+
+    def next_op_step(self):
+        for buffkey in self.buffers.keys():
+            self.buffers[buffkey].next_op_step()
 
     def decode(self, msg):
         if (msg.core_id == self.router_id):
@@ -150,12 +169,14 @@ class Arbiter:
         if (not self.sink.is_full()):
             msg = None
             for i, key in enumerate(self.resource_refs.keys()):
-                if (i > self.start_ind and self.resource_refs[key].req() == self.direction):
+                mop, trav = self.resource_refs[key].req()
+                if ((not trav) and i > self.start_ind and mop == self.direction):
                     self.start_ind = i
                     msg = self.resource_refs[key].dequeue()
             if msg is None: # loop back around
                 for i, key in enumerate(self.resource_refs.keys()):
-                    if (i <= self.start_ind and self.resource_refs[key].req() == self.direction):
+                    mop, trav = self.resource_refs[key].req()
+                    if ((not trav) and i <= self.start_ind and mop == self.direction):
                         self.start_ind = i
                         msg = self.resource_refs[key].dequeue()
             if msg is not None: # send the message to its designated endpoint

@@ -28,6 +28,9 @@ class SynapseState:
     def get_delay(self):
         return self.delay
 
+    def __repr__(self):
+        return 'nrn_id: {} wgt: {} dly: {}'.format(self.neuron_id, self.weight, self.delay)
+
 class Core:
     """"""
     def __init__(self, core_id, tstep_ref_func):
@@ -76,11 +79,11 @@ class Core:
     def set_sink_ref(self, ref):
         self.noc_ref = ref
 
-    def add_synapse_in(self, axon_in, synapse_state):
+    def add_synapse_in(self, ax_in, synapse_state):
         # synapse is part of an axon_in list
-        if not axon_in in self.axon_in.keys():
-            self.axon_in[axon_in] = []
-        self.axon_in[axon_in].append(synapse_state)
+        if not ax_in in self.axon_in:
+            self.axon_in[ax_in] = []
+        self.axon_in[ax_in].append(synapse_state)
         # synapse contains weight, delay, and target neuron id
         self.n_synapse_in += 1
 
@@ -138,11 +141,12 @@ class Core:
     def process_msg(self):
         if not self.in_buffer.is_empty():
             msg = self.in_buffer.dequeue()
+            print('Process message! {}'.format(str(msg)))
             for ax_in in msg.axon_ids: # index into synapse state
-                assert ax_in in self.axon_in
+                print(self.axon_in)
                 synapse_list = self.axon_in[ax_in]
                 for syn in synapse_list:
-                    self.input[syn.get_delay()][syn.get_neuron_id()] += syn.get_weight() # TODO - quantization
+                    self.input[syn.get_delay() + msg.get_delay()][syn.get_neuron_id()] += syn.get_weight() # TODO - quantization
 
     @staticmethod
     def clip(_val, _min, _max):
@@ -168,8 +172,9 @@ class Core:
             if (self.voltage[self.cur_nrn] > self.vth[self.cur_nrn]): # spike
                 self.voltage[self.cur_nrn] = 0.0
                 # create spike message(s)
-                for smsg_data in self.axon_out[self.cur_nrn]:
-                    self.out_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
+                if self.cur_nrn in self.axon_out.keys(): # prevent KeyError
+                    for smsg_data in self.axon_out[self.cur_nrn]:
+                        self.out_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
             self.cur_nrn += 1 # program counter for next neuron
 
     def ready(self):

@@ -39,6 +39,7 @@ class Chip:
         self.x_dim = x_dim
         self.y_dim = y_dim
         self.get_ind = lambda x, y: y + (x * self.y_dim) # for iterating x outer, y inner
+        self.core_cycle_count = 0
         self.cores = []
         self.routers = []
         for x in range(self.x_dim):
@@ -86,23 +87,33 @@ class Chip:
 
     def operate(self):
         if (self.controller.conditional_run()):
+            tic_toc = True
             while(not self.ready()):
                 # first iterate through the matrix of cores and operate
                 for core in self.cores:
                     core.operate()
-                    print(core.voltage)
                 # iterate through the routers and operate
-                for router in self.routers:
-                    router.operate()
-                    print(router)
+                if tic_toc:
+                    # do this once before such that each message gets a chance to move once only
+                    self.noc_next_op_step()
+                    for router in self.routers:
+                        router.operate()
+                        print(router)
+                tic_toc = not tic_toc
+                self.core_cycle_count += 1
             self.controller.inc_tstep()
             for core in self.cores:
                 core.advance_timestep()
+
+    def noc_next_op_step(self):
+        for router in self.routers:
+            router.next_op_step()
 
     def run(self):
         while(self.controller.conditional_run()):
             print("tstep: {}".format(self.controller.get_tstep()))
             self.operate()
+        print("Cycle Count: {}".format(self.core_cycle_count))
             
     def ready(self):
         is_ready = True

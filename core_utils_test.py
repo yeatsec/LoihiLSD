@@ -39,6 +39,5 @@ for tstep in range(100):
 
 # to do
 # phasemag model to file encoder
-# timing estimation and collection
 # prioqueue implementation (use virtual channels)
 # measure speedup on real example
