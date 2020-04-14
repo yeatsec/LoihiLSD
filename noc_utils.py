@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import numpy as np
 
 class SpikeMsg:
 
@@ -37,36 +38,47 @@ class SpikeMsg:
 
 class Queue:
 
-    def __init__(self, capacity=50, decode = lambda msg: msg.set_op('nop')):
+    def __init__(self, capacity=50, decode = lambda msg: msg.set_op('nop'), pQ=True):
         self.buffer = []
         self.capacity = capacity
         self.decode = decode
+        self.pQ = pQ
 
     def enqueue(self, msg):
         assert not self.is_full() # should not be calling this if buffer at capacity
         # do decode step here
         msg.set_traveled(True)
         self.decode(msg)
-        self.buffer.append(msg)
+        self.buffer.append(msg) # do pQ stuff on op step
 
     def dequeue(self):
         assert not self.is_empty()
         return self.buffer.pop(0)
 
     def next_op_step(self):
-        for msg in self.buffer:
+        for i, msg in enumerate(self.buffer):
             msg.set_traveled(False)
+            if self.pQ and msg.get_delay() == 1 and i > 0:
+                self.buffer.insert(0, self.buffer.pop(i))
 
     def is_empty(self):
         return len(self.buffer) == 0
 
-    def is_full(self):
-        return len(self.buffer) == self.capacity
+    def is_full(self, amt=1):
+        return len(self.buffer)+amt-1 >= self.capacity
 
     def dec_delays(self):
         # iterate through the messages in the buffer and decrement delay
-        for i, msg in enumerate(self.buffer):
-            msg.decrement_delay()
+        if self.pQ:
+            tmp = len(self.buffer)
+            for i, msg in enumerate(self.buffer):
+                msg.decrement_delay()
+                msg.set_traveled(False)
+                assert msg.get_delay() > 0
+                if msg.get_delay() == 1:
+                    self.buffer.insert(0, self.buffer.pop(i))
+            assert len(self.buffer) == tmp
+                    
 
     def __repr__(self):
         return str(self.buffer)
@@ -77,7 +89,18 @@ class Queue:
         return self.buffer[0].op, self.buffer[0].get_traveled()
 
     def ready(self):
-        return self.is_empty()
+        if self.pQ and not self.is_empty():
+            no_delay_one = True
+            for msg in self.buffer:
+                if no_delay_one and msg.get_delay() == 1:
+                    no_delay_one = False
+                    break
+            return no_delay_one
+        else:
+            return self.is_empty()
+
+    def get_util(self):
+        return float(len(self.buffer))/self.capacity
 
 
 class Router:
@@ -91,7 +114,7 @@ class Router:
         selection/control logic/arbitration // handled by xbar
     """
 
-    def __init__(self, router_id, keys=['north', 'east', 'south', 'west', 'local'], in_cap=50, pQ=False):
+    def __init__(self, router_id, keys=['north', 'east', 'south', 'west', 'local'], in_cap=50):
         self.router_id = router_id
         self.in_cap = in_cap
         self.arity = len(keys)
@@ -148,6 +171,16 @@ class Router:
             else:
                 break
         return r
+
+    def next_timestep(self):
+        assert self.ready()
+        for buffkey in self.buffers.keys():
+            self.buffers[buffkey].dec_delays()
+
+    def get_util(self):
+        return np.asarray([[0.0, self.buffers['north'].get_util(), 0.0], \
+            [self.buffers['west'].get_util(), 0.0, self.buffers['east'].get_util()], \
+                [self.buffers['local'].get_util(), self.buffers['south'].get_util(), 0.0]], dtype=float)
         
 
 class Arbiter:

@@ -34,14 +34,16 @@ class Chip:
     """
     Class that maps cores to routers and defines the topology of the system
     """
-    def __init__(self, x_dim=4, y_dim=4):
+    def __init__(self, x_dim=4, y_dim=4, util_arr=None):
         self.controller = SimController()
         self.x_dim = x_dim
         self.y_dim = y_dim
         self.get_ind = lambda x, y: y + (x * self.y_dim) # for iterating x outer, y inner
+        self.get_coor = lambda i: (i//self.y_dim, i%self.y_dim)
         self.core_cycle_count = 0
         self.cores = []
         self.routers = []
+        self.util_arr_ref = util_arr
         for x in range(self.x_dim):
             for y in range(self.y_dim):
                 self.cores.append(Core((x, y), self.controller.get_tstep))
@@ -75,8 +77,6 @@ class Chip:
                 self.cores[i].set_sink_ref(self.routers[i].get_buffer_ref('local'))
             for router in self.routers:
                 router.initialize_crossbar()
-            # TODO - initialize cores appropriately
-            # add neurons, synapses to cores
 
     def program_cores(self, filename):
         self.programmer = ChipProgrammer(filename, self)
@@ -89,6 +89,8 @@ class Chip:
         if (self.controller.conditional_run()):
             tic_toc = True
             while(not self.ready()):
+                if self.util_arr_ref is not None:
+                    self.util_arr_ref.append(list())
                 # first iterate through the matrix of cores and operate
                 for core in self.cores:
                     core.operate()
@@ -98,12 +100,17 @@ class Chip:
                     self.noc_next_op_step()
                     for router in self.routers:
                         router.operate()
+                    if self.util_arr_ref is not None:
+                        for router in self.routers:
+                            self.util_arr_ref[-1].append(router.get_util())
                         #print(router)
                 tic_toc = not tic_toc
                 self.core_cycle_count += 1
             self.controller.inc_tstep()
             for core in self.cores:
-                core.advance_timestep()
+                core.next_timestep()
+            for router in self.routers:
+                router.next_timestep()
 
     def noc_next_op_step(self):
         for router in self.routers:
@@ -114,6 +121,12 @@ class Chip:
             print("tstep: {}".format(self.controller.get_tstep()))
             self.operate()
         print("Cycle Count: {}".format(self.core_cycle_count))
+
+    def get_last_nrn_vs(self):
+        last_nrn_vs = []
+        for core in self.cores:
+            last_nrn_vs.append(core.get_last_nrn_v())
+        return last_nrn_vs
             
     def ready(self):
         is_ready = True

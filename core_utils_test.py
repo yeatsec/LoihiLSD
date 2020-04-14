@@ -18,13 +18,13 @@ router.initialize_crossbar()
 # router should be ready
 
 # set up neural simulation
-core.add_neuron(0.5, 0.9, 100.0, bias=40.0)
+core.add_neuron(0.5, 1.0, 100.0, bias=30.0)
 core.add_axon_out(0, ((0, 0), [0], 1))
-core.add_synapse_in(0, SynapseState(0, -40.0, 7))
+core.add_synapse_in(0, SynapseState(0, -50.0, 16))
 core.prepare_computation() # core ready
 
 # simulation loop
-for tstep in range(100):
+for tstep in range(200):
     _t = tstep
     print('core tstep: {}'.format(core.cur_tstep()))
     opstep = 0
@@ -33,11 +33,11 @@ for tstep in range(100):
         core.operate()
         #print('neuron v: {}'.format(core.voltage[0]))
         print(router)
+        router.next_op_step()
         router.operate()
         opstep += 1
     core.next_timestep()
 
 # to do
-# phasemag model to file encoder
-# prioqueue implementation (use virtual channels)
-# measure speedup on real example
+# measure output of SNN, plot
+# create slides

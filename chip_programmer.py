@@ -35,7 +35,6 @@ class ChipProgrammer:
                 decay_u = DTYPE(line[4])
                 decay_v = DTYPE(line[5])
                 vth = DTYPE(line[6])
-                print('vth: {}'.format(vth))
                 bias = DTYPE(line[7])
                 bias_delay = np.int32(line[8])
                 vmin = DTYPE(line[9])

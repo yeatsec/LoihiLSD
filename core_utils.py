@@ -40,7 +40,7 @@ class Core:
         self.n_axon_out = 0
         self.n_synapse_in = 0
         self.in_buffer = Queue()
-        self.out_buffer = Queue(capacity=MAX_AXON_OUT) # worst case buffering
+        self.out_buffer = Queue()
         self.noc_ref = None
         self.cur_nrn = 0
         # variables
@@ -56,6 +56,7 @@ class Core:
         self.vmax = []
         self.bias = []
         self.bias_delay = []
+        self.last_nrn_v = []
 
         # discretization methods
         # self._decay_current = lambda x, u: decay_int(x, self.decay_u, offset=1) + u
@@ -69,9 +70,18 @@ class Core:
         self.input[:-1] = self.input[1:]
         self.input[-1] = 0
 
+    def next_op_step(self):
+        self.in_buffer.next_op_step()
+        self.out_buffer.next_op_step()
+
     def next_timestep(self):
+        assert self.ready()
         self.advance_input()
         self.cur_nrn = 0
+        self.in_buffer.dec_delays()
+        self.out_buffer.dec_delays()
+        if self.n_neurons > 0:
+            self.last_nrn_v.append(self.voltage[self.n_neurons-1])
 
     def get_sink_ref(self):
         return self.in_buffer
@@ -157,7 +167,7 @@ class Core:
         return _val
 
     def process_neuron(self):
-        if self.cur_nrn < self.n_neurons and not self.out_buffer.is_full():
+        if self.cur_nrn < self.n_neurons and not self.out_buffer.is_full(amt=10):
             # add input to current and decay
             self.current[self.cur_nrn] = self._decay_current(self.cur_nrn)
             # self._overflow(self.current[self.cur_nrn], U_BITS)
@@ -174,18 +184,32 @@ class Core:
                 # create spike message(s)
                 if self.cur_nrn in self.axon_out.keys(): # prevent KeyError
                     for smsg_data in self.axon_out[self.cur_nrn]:
-                        self.out_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
+                        if smsg_data[0] != self.core_id or self.in_buffer.is_full(): # do not use local bypass if in_buffer is full
+                            self.out_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
+                        else: # local, use local bypass
+                            self.in_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
+
             self.cur_nrn += 1 # program counter for next neuron
 
     def ready(self):
         return self.cur_nrn == self.n_neurons and self.in_buffer.ready() and self.out_buffer.ready()
 
-    def advance_timestep(self):
-        assert self.ready()
-        self.cur_nrn = 0
-        self.advance_input()
+    # def advance_timestep(self):
+    #     assert self.ready()
+    #     self.cur_nrn = 0
+    #     self.advance_input()
+    #     print('advance')
+    #     if self.n_neurons > 0:
+    #         self.last_nrn_v.append(self.voltage[self.n_neurons-1])
+
+    def get_last_nrn_v(self): # convenience function for plotting output
+        return self.last_nrn_v
 
     def operate(self):
         self.process_neuron()
+        self.next_op_step()
         self.process_noc()
         self.process_msg()
+
+    def get_util(self):
+        return self.out_buffer.get_util()
