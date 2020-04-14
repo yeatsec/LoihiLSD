@@ -39,7 +39,7 @@ for i, last_nrn_v in enumerate(last_nrn_vs[:10]):
     plt.xlabel('Timesteps')
     plt.ylabel('Voltage')
     plt.savefig('.\\figures\\{}.png'.format(i), dpi=100)
-    plt.show()
+
 
 for i, last_nrn_v in enumerate(last_nrn_vs[10:]):
     plt.figure()
