@@ -1,5 +1,5 @@
 from noc_utils import Queue, Router, Arbiter, Crossbar, SpikeMsg
-
+# simple test of queues and router impl
 msg0 = SpikeMsg((0, 0), 3)
 msg1 = SpikeMsg((0, 0), 2)
 

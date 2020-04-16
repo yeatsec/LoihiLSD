@@ -166,8 +166,10 @@ class Core:
             return _min
         return _val
 
-    def process_neuron(self):
+    def process_neuron(self, cyc_count=None):
         if self.cur_nrn < self.n_neurons and not self.out_buffer.is_full(amt=10):
+            if cyc_count is not None:
+                cyc_count['run'] += 1
             # add input to current and decay
             self.current[self.cur_nrn] = self._decay_current(self.cur_nrn)
             # self._overflow(self.current[self.cur_nrn], U_BITS)
@@ -188,8 +190,10 @@ class Core:
                             self.out_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
                         else: # local, use local bypass
                             self.in_buffer.enqueue(SpikeMsg(smsg_data[0], smsg_data[1], delay=smsg_data[2]))
-
             self.cur_nrn += 1 # program counter for next neuron
+        else:
+            if cyc_count is not None:
+                cyc_count['stall'] += 1
 
     def ready(self):
         return self.cur_nrn == self.n_neurons and self.in_buffer.ready() and self.out_buffer.ready()
@@ -205,8 +209,8 @@ class Core:
     def get_last_nrn_v(self): # convenience function for plotting output
         return self.last_nrn_v
 
-    def operate(self):
-        self.process_neuron()
+    def operate(self, cyc_count=None):
+        self.process_neuron(cyc_count=cyc_count)
         self.next_op_step()
         self.process_noc()
         self.process_msg()

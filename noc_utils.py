@@ -114,15 +114,15 @@ class Router:
         selection/control logic/arbitration // handled by xbar
     """
 
-    def __init__(self, router_id, keys=['north', 'east', 'south', 'west', 'local'], in_cap=50):
+    def __init__(self, router_id, keys=['north', 'east', 'south', 'west', 'local']):
         self.router_id = router_id
-        self.in_cap = in_cap
+        #self.in_cap = in_cap
         self.arity = len(keys)
         self.keys = keys
         self.buffers = OrderedDict()
         self.sink_refs = OrderedDict()
         for key in keys:
-            self.buffers[key] = Queue(capacity=in_cap, decode=self.decode)
+            self.buffers[key] = Queue(decode=self.decode)
             self.sink_refs[key] = None
         self.xbar = None
 

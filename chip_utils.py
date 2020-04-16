@@ -42,12 +42,13 @@ class Chip:
         self.get_coor = lambda i: (i//self.y_dim, i%self.y_dim)
         self.core_cycle_count = 0
         self.cores = []
+        self.cyc_counters = [{'stall': 0, 'run': 0} for _ in range(self.x_dim * self.y_dim)]
         self.routers = []
         self.util_arr_ref = util_arr
         for x in range(self.x_dim):
             for y in range(self.y_dim):
                 self.cores.append(Core((x, y), self.controller.get_tstep))
-                self.routers.append(Router((x, y), in_cap=50))
+                self.routers.append(Router((x, y)))
         directions = ['north', 'east', 'south', 'west', 'local']
         self.buffers = {}
         self.sink_refs = {}
@@ -92,8 +93,8 @@ class Chip:
                 if self.util_arr_ref is not None:
                     self.util_arr_ref.append(list())
                 # first iterate through the matrix of cores and operate
-                for core in self.cores:
-                    core.operate()
+                for i, core in enumerate(self.cores):
+                    core.operate(cyc_count=self.cyc_counters[i])
                 # iterate through the routers and operate
                 if tic_toc:
                     # do this once before such that each message gets a chance to move once only
