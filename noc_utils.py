@@ -38,7 +38,7 @@ class SpikeMsg:
 
 class Queue:
 
-    def __init__(self, capacity=1000, decode = lambda msg: msg.set_op('nop'), pQ=True):
+    def __init__(self, capacity=50, decode = lambda msg: msg.set_op('nop'), pQ=True):
         self.buffer = []
         self.capacity = capacity
         self.decode = decode

@@ -167,7 +167,7 @@ class Core:
         return _val
 
     def process_neuron(self, cyc_count=None):
-        if self.cur_nrn < self.n_neurons and not self.out_buffer.is_full(amt=10):
+        if self.cur_nrn < self.n_neurons and not self.out_buffer.is_full(amt=11):
             if cyc_count is not None:
                 cyc_count['run'] += 1
             # add input to current and decay

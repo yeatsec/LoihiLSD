@@ -88,15 +88,16 @@ class Chip:
 
     def operate(self):
         if (self.controller.conditional_run()):
-            tic_toc = True
+            tic_toc = 0 # use tic_toc for relative timeing
             while(not self.ready()):
                 if self.util_arr_ref is not None:
                     self.util_arr_ref.append(list())
                 # first iterate through the matrix of cores and operate
-                for i, core in enumerate(self.cores):
-                    core.operate(cyc_count=self.cyc_counters[i])
+                if tic_toc%4==0:
+                    for i, core in enumerate(self.cores):
+                        core.operate(cyc_count=self.cyc_counters[i])
                 # iterate through the routers and operate
-                if tic_toc:
+                if tic_toc%1 == 0:
                     # do this once before such that each message gets a chance to move once only
                     self.noc_next_op_step()
                     for router in self.routers:
@@ -105,7 +106,7 @@ class Chip:
                         for router in self.routers:
                             self.util_arr_ref[-1].append(router.get_util())
                         #print(router)
-                tic_toc = not tic_toc
+                tic_toc = tic_toc + 1
                 self.core_cycle_count += 1
             self.controller.inc_tstep()
             for core in self.cores:
